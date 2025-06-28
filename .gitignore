@@ -56,3 +56,8 @@ __snapshots__/
 *.bak
 *.orig
 *.rej
+
+# Ignore large model files
+ocr_line_model/pytorch_model.bin
+ocr_line_model/model.safetensors
+ocr_line_model/checkpoint-*/
