@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String   @id @default(cuid())
+  auth0Id String?   @unique
+  name    String
+  email     String   @unique
+  courses  Course[] 
+}
+
+
+model Course {
+  id         String   @id @default(cuid())
+  courseCode String   
+  className   String 
+  assignments Assignment[]
+
+  // FK to User
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@unique([courseCode, userId], name: "unique_course_code_per_user")
+
+  @@index([courseCode], name: "course_code_index")
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  title       String
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // FK to Course
+  courseId    String  // Foreign key to Course, it needs to be defined for the next line to function
+  course      Course   @relation(fields: [courseId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  // No duplicate titles for the same course
+  @@unique([title, courseId], name: "unique_assignment_title_per_course")
+
+
+  @@index([dueDate], name: "assignment_due_date_index")
+  @@index([completed], name: "assignment_completed_index")
+}
