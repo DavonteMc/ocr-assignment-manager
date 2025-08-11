@@ -48,7 +48,7 @@ export default function CourseUpload({ courses, setCourses }) {
       <div className="flex items-center mb-4 justify-center">
         <label
           htmlFor="file-upload"
-          className="inline-block cursor-pointer bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          className="inline-block cursor-pointer bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 hover:scale-105 transition duration-300"
         >
           {file ? "File Selected" : "Choose File"}
         </label>
@@ -65,7 +65,7 @@ export default function CourseUpload({ courses, setCourses }) {
       <button
         onClick={handleUpload}
         disabled={!file || loading}
-        className="bg-blue-600 w-3/4 mx-auto text-white px-4 py-2 rounded hover:bg-blue-700"
+        className="bg-blue-600 w-3/4 mx-auto text-white px-4 py-2 rounded hover:bg-blue-700 hover:scale-105 transition duration-300"
       >
         {loading ? "Processing..." : "Upload & Process"}
       </button>
