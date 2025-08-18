@@ -2,24 +2,16 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useState } from "react";
 import CourseUpload from "./_components/course-upload";
+import Course from "./_components/course";
 import Login from "./_components/login";
 import LogoutButton from "./_components/logout";
+import { useApp } from "./_providers/AppContextProvider";
 
 export default function HomePage() {
-  const { user } = useAuth0();
-  const [courses, setCourses] = useState([
-    {
-      className: "",
-      assignments: [{}],
-    },
-  ]);
+  const { user, isAuthenticated } = useAuth0();
+  const { appUser } = useApp();
 
-  const [course, setCourse] = useState({
-    className: "",
-    assignments: [],
-  });
-
-  if (!user) {
+  if (!user || !isAuthenticated) {
     return <Login />;
   }
 
@@ -39,32 +31,13 @@ export default function HomePage() {
       </header>
 
       <section className="max-w-3xl mx-auto p-3">
-        <CourseUpload courses={courses} setCourses={setCourses} />
+        <CourseUpload />
       </section>
 
-      {courses.length > 0 && courses[0].assignments.length > 0 && (
+      {appUser.courses.length > 0 && appUser.courses[0].assignments.length > 0 && (
         <section className="mt-8 p-6">
-          {courses.map((course, index) => (
-            <div key={index} className="mb-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
-                {course.className}
-              </h3>
-              <ul className="space-y-3">
-                {course.assignments.map((assignment, i) => (
-                  <li
-                    key={i}
-                    className="bg-white p-4 rounded shadow border-l-4 border-green-500"
-                  >
-                    <p className="font-bold text-lg text-gray-800">
-                      {assignment.title}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {assignment.due}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {appUser.courses.map((course, index) => (
+            <Course key={index} course={course} index={index} />
           ))}
         </section>
       )}

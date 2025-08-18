@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useApp } from "../_providers/AppContextProvider";
+import Assignment from "./assignment";
 
 export default function CourseUpload({ courses, setCourses }) {
+  const { appUser, saveCourseAndAssignments } = useApp();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [className, setClassName] = useState("");
+  const [tempAssignments, setTempAssignments] = useState([]);
+  const [displayAssignments, setDisplayAssignments] = useState(false);
 
   const handleUpload = async () => {
+    displayAssignments(false);
+    setTempAssignments([]);
     if (!className.trim()) {
       alert("Please enter a class name.");
       return;
@@ -24,13 +31,8 @@ export default function CourseUpload({ courses, setCourses }) {
     });
 
     const data = await res.json();
-    setCourses((prev) => [
-      ...prev,
-      {
-        className: className,
-        assignments: data.assignments || [],
-      },
-    ]);
+    setTempAssignments(data.assignments || []);
+    setDisplayAssignments(true);
     setLoading(false);
   };
 
@@ -69,6 +71,26 @@ export default function CourseUpload({ courses, setCourses }) {
       >
         {loading ? "Processing..." : "Upload & Process"}
       </button>
+
+      {displayAssignments && tempAssignments.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold mt-6 mb-4">
+            Assignments for {className}
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Click on an assignment to edit its title or due date. When your done,
+            click the "Save" button to save the assignments to your course.
+          </p>
+          <button type="button" onClick={() => saveCourseAndAssignments(className, tempAssignments)}>
+            Save Assignments
+          </button>
+          <ul className="space-y-3">
+            {tempAssignments.map((assignment, i) => (
+              <Assignment index={i} assignment={assignment} type={temp} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

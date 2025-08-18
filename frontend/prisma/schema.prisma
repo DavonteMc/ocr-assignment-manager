@@ -14,27 +14,22 @@ datasource db {
 }
 
 model User {
-  id       String   @id @default(cuid())
-  auth0Id String?   @unique
+  email       String   @id 
   name    String
-  email     String   @unique
   courses  Course[] 
 }
 
 
 model Course {
   id         String   @id @default(cuid())
-  courseCode String   
-  className   String 
+  courseName   String @unique
   assignments Assignment[]
 
   // FK to User
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [email], onUpdate: Cascade, onDelete: Cascade)
 
-  @@unique([courseCode, userId], name: "unique_course_code_per_user")
-
-  @@index([courseCode], name: "course_code_index")
+  @@index([courseName], name: "course_name_index")
 }
 
 model Assignment {
