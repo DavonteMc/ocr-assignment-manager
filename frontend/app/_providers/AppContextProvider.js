@@ -62,11 +62,10 @@ export const AppContextProvider = ({ children }) => {
   const saveCourseChanges = async (courseId, courseName) => {
     try {
       const updatedUser = await prisma.$transaction(async (tx) => {
-        const course = await tx.course.update({
+        await tx.course.update({
           where: { id: courseId },
           data: {
             courseName: courseName,
-            user: { connect: { email: appUser.email } },
           },
         });
 
@@ -115,17 +114,98 @@ export const AppContextProvider = ({ children }) => {
 
   // Assignment Functions ----------------------------
 
-  const handleAssignmentTitleChange = (assignmentId, e) => {};
+  const saveAssignmentChanges = async (
+    assignmentId,
+    title,
+    dueDate,
+    completionStatus
+  ) => {
+    try {
+      const updatedUser = await prisma.$transaction(async (tx) => {
+        await tx.assignment.update({
+          where: { id: assignmentId },
+          data: {
+            title: title,
+            dueDate: dueDate,
+            completed: completionStatus,
+          },
+        });
 
-  const handleAssignmentDueChange = (assignmentId, e) => {};
+        return await tx.user.findUnique({
+          where: { email: appUser.email },
+          include: {
+            courses: { include: { assignments: true } },
+          },
+        });
+      });
 
-  const handleAssignmentStatus = (assignmentId, e) => {};
+      setAppUser({
+        email: updatedUser.email,
+        name: updatedUser.name,
+        courses: updatedUser.courses || [],
+      });
+    } catch (error) {
+      console.error("Error saving assignment changes:", error);
+    }
+  };
 
-  const saveAssignmentChanges = (assignmentId) => {};
+  const addAssignment = async (courseId, title, dueDate, completionStatus) => {
+    try {
+      const updatedUser = await prisma.$transaction(async (tx) => {
+        
+        await tx.assignment.create({
+        data: {
+          title: title,
+          dueDate: dueDate,
+          completed: completionStatus,
+          course: { connect: { id: courseId } },
+        },
+      });
 
-  const addAssignment = (assignmentId) => {};
+        
 
-  const removeAssignment = (assignmentId) => {};
+        // Return the updated user with courses and assignments
+        return await tx.user.findUnique({
+          where: { email: appUser.email },
+          include: {
+            courses: { include: { assignments: true } },
+          },
+        });
+      });
+
+      setAppUser({
+        email: updatedUser.email,
+        name: updatedUser.name,
+        courses: updatedUser.courses || [],
+      });
+    } catch (error) {
+      console.error("Error adding assignment:", error);
+    }
+  };
+
+  const removeAssignment = async (assignmentId) => {
+    try {
+      await prisma.assignment.delete({
+        where: { id: assignmentId },
+      });
+
+      // Fetch the updated user data including courses and assignments
+      const updatedUser = await prisma.user.findUnique({
+        where: { email: appUser.email },
+        include: {
+          courses: { include: { assignments: true } },
+        },
+      });
+
+      setAppUser({
+        email: updatedUser.email,
+        name: updatedUser.name,
+        courses: updatedUser.courses || [],
+      });
+    } catch (error) {
+      console.error("Error removing assignment:", error);
+    }
+  };
 
   useEffect(() => {
     if (!user || !isAuthenticated) {
@@ -185,15 +265,9 @@ export const AppContextProvider = ({ children }) => {
     <AppContext.Provider
       value={{
         appUser,
-        setAppUser,
         saveCourseAndAssignments,
-        handleCourseNameChange,
         saveCourseChanges,
-        addCourse,
         removeCourse,
-        handleAssignmentTitleChange,
-        handleAssignmentDueChange,
-        handleAssignmentStatus,
         saveAssignmentChanges,
         addAssignment,
         removeAssignment,
