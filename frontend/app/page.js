@@ -13,12 +13,11 @@ export default function HomePage() {
   const [displayCourseUpload, setDisplayCourseUpload] = useState(false);
   const { appUser } = useApp();
 
-  if (!user || !isAuthenticated) {
+  if (!user || !isAuthenticated || !appUser) {
     return <Login />;
   }
 
-  const selectedDisplay =
-    "text-decoration-underline font-bold underline-offset-4";
+  const selectedDisplay = "underline underline-offset-8 decoration-2";
 
   const handleDisplays = (displayType) => {
     if (displayType === "courses" && !displayCourseUpload) {
@@ -34,8 +33,13 @@ export default function HomePage() {
     setDisplayCourseUpload(true);
   };
 
+  const handleCourseUploadCompletion = () => {
+    setDisplayCourseUpload(false);
+    setDisplayCourses(true);
+  };
+
   return (
-    <main className="min-h-screen bg-gray-100 text-gray-900 font-sans">
+    <main className="min-h-screen bg-gray-200 text-gray-900 font-sans">
       <header className="flex w-full justify-between bg-white px-3 py-1 items-center mb-8 shadow-md sticky top-0 z-50">
         <p className="text-[2.6vw] font-bold text-center text-blue-800">
           Assignment Manager
@@ -56,7 +60,7 @@ export default function HomePage() {
             displayCourses ? selectedDisplay : ""
           }`}
         >
-          <h2 className={` ${displayCourses ? selectedDisplay : ""}`}>
+          <h2 className={`text-3xl ${displayCourses ? selectedDisplay : ""}`}>
             Display Courses & Assignments
           </h2>
         </button>
@@ -68,22 +72,22 @@ export default function HomePage() {
             displayCourseUpload ? selectedDisplay : ""
           }`}
         >
-          <h2 className={` ${displayCourseUpload ? selectedDisplay : ""}`}>
+          <h2 className={` text-3xl ${displayCourseUpload ? selectedDisplay : ""}`}>
             Upload Assignments
           </h2>
         </button>
       </section>
 
-      {displayCourses && (
-        <section className="mt-8 p-6">
+      {displayCourses && appUser !== undefined && appUser !== null && (
+        <section className="grid grid-cols-2 gap-8 mt-4 p-12">
           {appUser.courses.map((course, index) => (
             <Course key={index} course={course} index={index} />
           ))}
         </section>
       )}
       {displayCourseUpload && (
-        <section className="mt-8 p-6">
-          <CourseUpload onComplete={() => setDisplayCourseUpload(false)} />
+        <section className="flex mt-8 p-6 items-center justify-center">
+          <CourseUpload onComplete={() => handleCourseUploadCompletion()} />
         </section>
       )}
     </main>

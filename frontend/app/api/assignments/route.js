@@ -33,6 +33,7 @@ export async function POST(req) {
     const body = await req.json();
 
     // Bulk creation: body contains "assignments" array and "courseId"
+    console.log("POST /api/assignments body:", body);
     if (
       body.courseId &&
       Array.isArray(body.assignments) &&
@@ -40,7 +41,7 @@ export async function POST(req) {
     ) {
       const assignmentsData = body.assignments.map((assignment) => ({
         title: assignment.title,
-        dueDate: assignment.dueDate ? new Date(assignment.dueDate) : null,
+        dueDate: assignment.due ? new Date(assignment.due) : null,
         completed: assignment.completed ?? false,
         courseId: body.courseId,
       }));
@@ -54,7 +55,7 @@ export async function POST(req) {
     }
 
     // Single assignment creation: expect these fields in body
-    const { courseId, title, dueDate, completed } = body;
+    const { courseId, title, due, completed } = body;
     if (!courseId || !title || typeof completed !== "boolean") {
       return NextResponse.json(
         { error: "Missing fields for single assignment creation" },
@@ -65,7 +66,7 @@ export async function POST(req) {
     const assignment = await prisma.assignment.create({
       data: {
         title,
-        dueDate: dueDate ? new Date(dueDate) : null,
+        dueDate: due? new Date(due) : null,
         completed,
         course: { connect: { id: courseId } },
       },

@@ -43,6 +43,7 @@ export default function AppContextProvider({ children }) {
       const { course } = await courseRes.json();
       console.log("Created course:", course);
       // Step 2: Create assignments for the course
+
       if (assignments.length > 0) {
         await fetch("/api/assignments", {
           method: "POST",
