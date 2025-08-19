@@ -6,10 +6,10 @@ import { useApp } from "../_providers/AppContextProvider";
 
 export default function Course({ course, index }) {
   const { saveCourseChanges } = useApp();
-  const [courseName, setCourseName] = useState(course.className);
+  const [courseName, setCourseName] = useState(course.courseName || "");
   const [nameChange, setNameChange] = useState(false);
   const cancelNameChange = () => {
-    setCourseName(course.className);
+    setCourseName(course.courseName);
     setNameChange(false);
   };
 
@@ -17,7 +17,7 @@ export default function Course({ course, index }) {
     <div key={index} className="mb-6">
       {!nameChange && (
         <h3 className="text-xl font-bold text-gray-800 mb-2">
-          {course.className}
+          {course.courseName}
         </h3>
       )}
       {nameChange && (

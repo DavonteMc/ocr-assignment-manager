@@ -6,54 +6,59 @@ import { prisma } from "@/lib/prisma";
 
 const AppContext = createContext();
 
-export const AppContextProvider = ({ children }) => {
-  const { user, isAuthenticated } = useAuth0();
-
+export default function AppContextProvider({ children }) {
+  const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
   const [appUser, setAppUser] = useState({
     email: user ? user.email : "",
     name: user ? user.name : "",
     courses: [],
   });
 
+  const fetchUserData = async () => {
+    try {
+      const res = await fetch(
+        `/api/user?email=${encodeURIComponent(user.email)}`
+      );
+      const data = await res.json();
+      setAppUser(data.user);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
+
   // Course Upload Function -------------------
   const saveCourseAndAssignments = async (courseName, assignments) => {
+    const token = await getAccessTokenSilently();
     try {
-      // Prisma transaction is used to ensure that both the course and assignments are created
-      // If any part fails, the whole transaction is rolled back
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        // tx is the transaction client
-        const course = await tx.course.create({
-          data: {
-            courseName,
-            user: { connect: { email: appUser.email } },
-          },
-        });
-
-        const assignmentsData = assignments.map((a) => ({
-          title: a.title,
-          dueDate: a.dueDate,
-          courseId: course.id,
-        }));
-
-        // Batch-create assignments
-        await tx.assignment.createMany({ data: assignmentsData });
-
-        // Return the updated user with courses and assignments
-        return await tx.user.findUnique({
-          where: { email: appUser.email },
-          include: {
-            courses: { include: { assignments: true } },
-          },
-        });
+      // Step 1: Create course (via your /api/courses route or directly)
+      const courseRes = await fetch("/api/courses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ courseName, userEmail: appUser.email }),
       });
 
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
-    } catch (error) {
-      console.error("Error saving course and assignments:", error);
+      const { course } = await courseRes.json();
+      console.log("Created course:", course);
+      // Step 2: Create assignments for the course
+      if (assignments.length > 0) {
+        await fetch("/api/assignments", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ courseId: course.id, assignments }),
+        });
+      }
+
+      // Step 3: Re-fetch updated user data or handle state update as needed
+      fetchUserData();
+      console.log("Course and assignments saved successfully");
+    } catch (err) {
+      console.error("Error saving course and assignments:", err);
     }
   };
 
@@ -61,27 +66,20 @@ export const AppContextProvider = ({ children }) => {
 
   const saveCourseChanges = async (courseId, courseName) => {
     try {
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        await tx.course.update({
-          where: { id: courseId },
-          data: {
-            courseName: courseName,
-          },
-        });
+      const token = await getAccessTokenSilently();
 
-        return await tx.user.findUnique({
-          where: { email: appUser.email },
-          include: {
-            courses: { include: { assignments: true } },
-          },
-        });
+      await fetch("/api/courses", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ courseId, courseName }),
       });
 
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
+      // Fetch and update user state
+      fetchUserData();
+      console.log("Course changes saved successfully");
     } catch (error) {
       console.error("Error saving course changes:", error);
     }
@@ -89,24 +87,18 @@ export const AppContextProvider = ({ children }) => {
 
   const removeCourse = async (courseId) => {
     try {
-      // Delete the course (related assignments will be deleted if schema uses CASCADE on delete)
-      await prisma.course.delete({
-        where: { id: courseId },
-      });
+      const token = await getAccessTokenSilently();
 
-      // Fetch the updated user data including courses and assignments
-      const updatedUser = await prisma.user.findUnique({
-        where: { email: appUser.email },
-        include: {
-          courses: { include: { assignments: true } },
+      await fetch(`/api/courses?courseId=${courseId}`, {
+        method: "DELETE",
+        headers: {
+          authorization: `Bearer ${token}`,
         },
       });
 
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
+      // Fetch and update user state
+      fetchUserData();
+      console.log("Course removed successfully");
     } catch (error) {
       console.error("Error removing course:", error);
     }
@@ -121,29 +113,29 @@ export const AppContextProvider = ({ children }) => {
     completionStatus
   ) => {
     try {
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        await tx.assignment.update({
-          where: { id: assignmentId },
-          data: {
-            title: title,
-            dueDate: dueDate,
-            completed: completionStatus,
-          },
-        });
-
-        return await tx.user.findUnique({
-          where: { email: appUser.email },
-          include: {
-            courses: { include: { assignments: true } },
-          },
-        });
+      const token = await getAccessTokenSilently();
+      console.log("Saving assignment changes:", {
+        assignmentId,
+        title,
+        dueDate,
+        completed: completionStatus,
+      });
+      await fetch("/api/assignments", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          assignmentId,
+          title,
+          dueDate,
+          completed: completionStatus,
+        }),
       });
 
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
+      fetchUserData();
+      console.log("Assignment changes saved successfully");
     } catch (error) {
       console.error("Error saving assignment changes:", error);
     }
@@ -151,33 +143,25 @@ export const AppContextProvider = ({ children }) => {
 
   const addAssignment = async (courseId, title, dueDate, completionStatus) => {
     try {
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        
-        await tx.assignment.create({
-        data: {
-          title: title,
-          dueDate: dueDate,
-          completed: completionStatus,
-          course: { connect: { id: courseId } },
+      const token = await getAccessTokenSilently();
+
+      await fetch("/api/assignments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          courseId,
+          title,
+          dueDate,
+          completed: completionStatus,
+        }),
       });
 
-        
-
-        // Return the updated user with courses and assignments
-        return await tx.user.findUnique({
-          where: { email: appUser.email },
-          include: {
-            courses: { include: { assignments: true } },
-          },
-        });
-      });
-
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
+      // Refresh user data state afterwards if needed
+      fetchUserData();
+      console.log("Assignment added successfully");
     } catch (error) {
       console.error("Error adding assignment:", error);
     }
@@ -185,23 +169,18 @@ export const AppContextProvider = ({ children }) => {
 
   const removeAssignment = async (assignmentId) => {
     try {
-      await prisma.assignment.delete({
-        where: { id: assignmentId },
-      });
+      const token = await getAccessTokenSilently();
 
-      // Fetch the updated user data including courses and assignments
-      const updatedUser = await prisma.user.findUnique({
-        where: { email: appUser.email },
-        include: {
-          courses: { include: { assignments: true } },
+      await fetch(`/api/assignments?assignmentId=${assignmentId}`, {
+        method: "DELETE",
+        headers: {
+          authorization: `Bearer ${token}`,
         },
       });
 
-      setAppUser({
-        email: updatedUser.email,
-        name: updatedUser.name,
-        courses: updatedUser.courses || [],
-      });
+      // Refresh user data state afterwards if needed
+      fetchUserData();
+      console.log("Assignment removed successfully");
     } catch (error) {
       console.error("Error removing assignment:", error);
     }
@@ -215,15 +194,12 @@ export const AppContextProvider = ({ children }) => {
     // Fetch user data from the database or create a new user if it doesn't exist
     const fetchUser = async () => {
       try {
-        const userData = {
-          email: user.email,
-          name: user.name,
-        };
+        const token = await getAccessTokenSilently();
 
-        await prisma.user.upsert({
-          where: { email: user.email },
-          create: userData,
-          update: userData,
+        await fetch("/api/user", {
+          method: "POST",
+          body: JSON.stringify({ email: user.email, name: user.name }),
+          headers: { authorization: `Bearer ${token}` },
         });
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -233,25 +209,11 @@ export const AppContextProvider = ({ children }) => {
     //
     const fetchUserData = async () => {
       try {
-        const userWithData = await prisma.user.findUnique({
-          where: { email: user.email },
-          include: {
-            courses: {
-              include: {
-                assignments: true,
-              },
-            },
-          },
-        });
-        if (!userWithData) {
-          console.error("User not found in database");
-          return;
-        }
-        setAppUser({
-          email: userWithData.email,
-          name: userWithData.name,
-          courses: userWithData.courses || [],
-        });
+        const res = await fetch(
+          `/api/user?email=${encodeURIComponent(user.email)}`
+        );
+        const data = await res.json();
+        setAppUser(data.user);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
@@ -276,7 +238,7 @@ export const AppContextProvider = ({ children }) => {
       {children}
     </AppContext.Provider>
   );
-};
+}
 
 export const useApp = () => {
   return useContext(AppContext);

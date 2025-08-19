@@ -4,15 +4,15 @@ import { useState } from "react";
 import { useApp } from "../_providers/AppContextProvider";
 
 export default function Assignment({ assignment, index }) {
-  const { saveAssignmentChanges } = useApp();
-  const [title, setTitle] = useState(assignment.title);
-  const [dueDate, setDueDate] = useState(assignment.dueDate);
+  const { saveAssignmentChanges, removeAssignment } = useApp();
+  const [title, setTitle] = useState(assignment.title || "");
+  const [dueDate, setDueDate] = useState(assignment.dueDate || null);
   const [completionStatus, setCompletionStatus] = useState(
-    assignment.completed
+    assignment.completed ?? false
   );
 
   const [editAssignment, setEditAssignment] = useState(false);
-  
+
   const cancelAssignmentChanges = () => {
     setTitle(assignment.title);
     setDueDate(assignment.dueDate);
@@ -20,6 +20,35 @@ export default function Assignment({ assignment, index }) {
     setEditAssignment(false);
   };
 
+  const handleSaveAssignmentChanges = async () => {
+    const dueDateToSend = dueDate === "" ? null : dueDate;
+
+    await saveAssignmentChanges(
+      assignment.id,
+      title,
+      dueDateToSend,
+      completionStatus
+    );
+
+    setTitle(assignment.title);
+    setDueDate(assignment.dueDate);
+    setCompletionStatus(assignment.completed);
+    setEditAssignment(false);
+  };
+  const formatDueDate = (dueDateISO) => {
+    if (!dueDateISO) return "No due date";
+    const date = new Date(dueDateISO);
+    return `Due on ${date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} ${date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  };
+
+  console.log("Assignment component rendered with:", assignment);
   return (
     <li
       key={index}
@@ -33,21 +62,23 @@ export default function Assignment({ assignment, index }) {
         {editAssignment && (
           <input
             type="text"
-            value={courseName}
-            onChange={(e) => setCourseName(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded mb-2"
             autoFocus
           />
         )}
         {/* Due Date Section */}
         {!editAssignment && (
-          <p className="text-sm text-gray-600 mt-1">{assignment.due}</p>
+          <p className="text-sm text-gray-600 mt-1">
+            {formatDueDate(assignment.due)}
+          </p>
         )}
         {editAssignment && (
           <input
-            type="text"
-            value={courseName}
-            onChange={(e) => setCourseName(e.target.value)}
+            type="datetime-local"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded mb-2"
             autoFocus
           />
@@ -59,7 +90,7 @@ export default function Assignment({ assignment, index }) {
               assignment.completed ? "text-green-600" : "text-red-600"
             }`}
           >
-            {assignment.completed ? "Completed" : "Pending"}
+            {assignment.completed ? "Completed" : "Pending Completion"}
           </p>
         )}
         {editAssignment && (
@@ -69,7 +100,7 @@ export default function Assignment({ assignment, index }) {
               assignment.completed ? "text-green-600" : "text-red-600"
             }`}
           >
-            {assignment.completed ? "Completed" : "Pending"}
+            {assignment.completed ? "Completed" : "Pending Completion"}
           </button>
         )}
       </div>
@@ -80,12 +111,17 @@ export default function Assignment({ assignment, index }) {
       )}
       {editAssignment && (
         <div>
-          <button type="button" onClick={() => saveAssignmentChanges(assignment.id, title, dueDate, completionStatus)}>Save</button>
+          <button type="button" onClick={() => handleSaveAssignmentChanges()}>
+            Save
+          </button>
           <button type="button" onClick={() => cancelAssignmentChanges()}>
             Cancel
           </button>
         </div>
       )}
+      <button type="button" onClick={() => removeAssignment(assignment.id)}>
+        Remove Assignment
+      </button>
     </li>
   );
 }

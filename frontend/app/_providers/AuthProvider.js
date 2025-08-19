@@ -24,7 +24,7 @@ function UserSynchronizer() {
 
         // The 'user' object from useAuth0() contains the profile information
         // We can pass this directly instead of fetching idToken claims again
-        await fetch("/api/users/ensure", {
+        await fetch("/api/user", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
